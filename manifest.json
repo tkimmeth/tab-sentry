@@ -1,22 +1,33 @@
+//manifest.json 
+
 {
-    "manifest_version": 3,
-    "name": "Tab Sentry – Gentle Closer",
-    "version": "0.1.0",
-    "description": "A browser extension that tackles 'Browser Fatigue' by auto-grouping idle tabs, giving countdown warnings, and gently closing them while saving URLs for later.",
-    "permissions": [
-        "tabs",
-        "tabGroups",
-        "storage",
-        "alarms",
-        "notifications",
-        "bookmarks"
-    ],
-    "host_permissions": ["<all_urls>"],
-    "background": {
-        "service_worker": "bg.js"
+  "manifest_version": 3,
+  "name": "Tab Sentry",
+  "version": "0.1.0",
+  "description": "A browser extension that tackles 'Browser Fatigue' by auto-grouping idle tabs, giving countdown warnings, and gently closing them while saving URLs for later.",
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "storage",
+    "alarms",
+    "notifications",
+    "bookmarks"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "bg.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "images/sentry.png",
+      "48": "images/sentry.png",
+      "128": "images/sentry.png"
     },
-    "action": {
-        "default_popup": "popup.html",
-        "default_title": "Tab Sentry"
-    }
+    "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "images/sentry.png",
+    "48": "images/sentry.png",
+    "128": "images/sentry.png"
+  }
 }

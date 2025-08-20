@@ -1,3 +1,5 @@
+<!-- popup.html -->
+
 <!doctype html>
 <html>
 <head>
@@ -7,10 +9,21 @@
 </head>
 <body>
   <h1>Tab Sentry</h1>
+
   <div id="status">Popup loaded</div>
+
+  <!-- Control buttons -->
   <button id="count">Count tabs</button>
   <button id="ping">Ping background</button>
   <div id="out"></div>
+  <button id="debug">Debug Stack</button>
+  <hr>
+
+  <!-- Recently closed section -->
+  <h2>Recently Closed</h2>
+  <button id="clear">Clear history</button>
+  <ul id="closed"></ul> <!-- THIS is the #closed list -->
+
   <script src="popup.js"></script>
 </body>
 </html>
