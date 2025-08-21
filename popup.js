@@ -21,6 +21,54 @@ $("ping").addEventListener("click", async () => {
   }
 });
 
+
+// -------------------------
+// Lock the tabs
+// -------------------------
+
+async function renderOpenTabs() {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const { lockedTabs = [] } = await chrome.storage.local.get("lockedTabs");
+  const lockedSet = new Set(lockedTabs);
+
+  const list = $("open-tabs");
+  list.innerHTML = "";
+
+  // Oldest at bottom
+  tabs.sort((a, b) => a.id - b.id);
+
+  for (const tab of tabs) {
+    const li = document.createElement("li");
+
+    // Title
+    const a = document.createElement("a");
+    a.href = "#";
+    a.textContent = tab.title || tab.url;
+    a.style.fontWeight = "bold";
+    a.onclick = () => chrome.tabs.update(tab.id, { active: true });
+
+    // Lock/unlock button
+    const btn = document.createElement("button");
+    if (lockedSet.has(tab.id)) {
+      btn.textContent = "🔓 Unlock";
+      btn.onclick = async () => {
+        await chrome.runtime.sendMessage({ type: "unlockTab", tabId: tab.id });
+        renderOpenTabs(); // refresh view
+      };
+    } else {
+      btn.textContent = "🔒 Lock";
+      btn.onclick = async () => {
+        await chrome.runtime.sendMessage({ type: "lockTab", tabId: tab.id });
+        renderOpenTabs(); // refresh view
+      };
+    }
+
+    li.appendChild(a);
+    li.appendChild(btn);
+    list.appendChild(li);
+  }
+}
+
 // -------------------------
 // RENDER RECENTLY CLOSED
 // -------------------------
