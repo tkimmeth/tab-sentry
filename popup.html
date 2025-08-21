@@ -1,5 +1,3 @@
-<!-- popup.html -->
-
 <!doctype html>
 <html>
 <head>
@@ -9,9 +7,9 @@
 </head>
 <body>
   <div class="container">
-    <h1>TabSentry</h1>
+    <h1>Tab Sentry</h1>
 
-    <!-- Metrics -->
+    <!-- Counters -->
     <div class="measurables">
       <div class="counter">
         <h4>Active Tabs:</h4>
@@ -25,9 +23,9 @@
 
     <hr>
 
-    <!-- Open Tabs section -->
+    <!-- Open Tabs -->
     <div class="OpenTabs">
-      <h2>Open Tabs <small>(✔ = Locked)</small></h2>
+      <h2>Open Tabs</h2>
       <ul id="open-tabs"></ul>
       <div class="empty-state">
         <div class="empty-state-icon"></div>
@@ -37,7 +35,7 @@
 
     <hr>
 
-    <!-- Recently Closed section -->
+    <!-- Recently Closed -->
     <div class="RecentlyClosed">
       <h2>Recently Closed</h2>
       <button id="clear">Clear history</button>
@@ -49,7 +47,6 @@
     </div>
   </div>
 
-  <!-- only one script, all logic in popup.js -->
   <script src="popup.js"></script>
 </body>
 </html>

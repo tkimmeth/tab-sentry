@@ -1,7 +1,12 @@
-/* popup.css */
-
-body { font-family: system-ui, sans-serif; margin: 12px; width: 240px; }
-h1 { font-size: 16px; margin: 0 0 8px; }
-button { margin: 6px 6px 0 0; }
+body { font-family: Arial, sans-serif; padding: 10px; margin: 12px; width: 300px; }
+h1 { font-size: 25px; margin: 0 0 8px; }
+h4 { display: inline-block; vertical-align: right;}
+button { display:inline-block; vertical-align: middle; margin: 5px 0; padding: 6px 10px; border-radius: 6px; border: none; background: #2b52ff; color: white; cursor: pointer;  }
+#lock{
+    float: right;
+}
+#clear{
+   float: right;
+}
 #out { margin-top: 8px; font-size: 12px; }
-#status { color: #0a7; margin-bottom: 6px; }    
+#status { color: #0a7; margin-bottom: 6px; }
