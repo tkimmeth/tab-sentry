@@ -31,6 +31,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       url: tab.url,
       title: tab.title || new URL(tab.url).hostname
     };
+        lastActive[tabId] = Date.now(); 
   }
 });
 
@@ -70,6 +71,36 @@ function normalizeUrl(raw) {
     return raw;
   }
 }
+
+
+// -------------------------
+// Locking the tabs
+// -------------------------
+const lockedTabs = new Set();
+
+async function saveLocks() {
+  await chrome.storage.local.set({ lockedTabs: Array.from(lockedTabs) });
+}
+
+async function loadLocks() {
+  const { lockedTabs: stored = [] } = await chrome.storage.local.get("lockedTabs");
+  lockedTabs.clear();
+  stored.forEach(id => lockedTabs.add(id));
+}
+loadLocks();
+
+// Listen for popup commands
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "lockTab") {
+    lockedTabs.add(msg.tabId);
+    saveLocks();
+    sendResponse({ ok: true });
+  } else if (msg.type === "unlockTab") {
+    lockedTabs.delete(msg.tabId);
+    saveLocks();
+    sendResponse({ ok: true });
+  }
+});
 
 // -------------------------
 // Save closed tab URL (dedup stack)
@@ -137,24 +168,27 @@ async function startCountdownAndClose() {
         let oldestTime = Date.now();
 
         for (const tab of tabs) {
-          if (!tab.url || tab.pinned) continue;
-          const domain = new URL(tab.url).hostname;
-          if (whitelist.some(w => domain.includes(w))) continue;
+      if (!tab.url || tab.pinned) continue;
+      if (lockedTabs.has(tab.id)) continue;
+      const domain = new URL(tab.url).hostname;
+      if (whitelist.some(w => domain.includes(w))) continue;
 
-          const last = lastActive[tab.id] || Date.now();
-          if (last < oldestTime) {
-            oldestTime = last;
-            oldestTab = tab;
-          }
-        }
+      const last = lastActive[tab.id] || Date.now();
+      if (last < oldestTime) {
+        oldestTime = last;
+        oldestTab = tab;
+      }
+    }
+
 
         if (oldestTab) {
           console.log("[Tab Sentry] Closing tab:", oldestTab.url);
-          await saveClosedTab(oldestTab.url);
+          await saveClosedTab(oldestTab.id);
           chrome.tabs.remove(oldestTab.id);
+
+          chrome.runtime.sendMessage({ type: "refresh" });
         }
       }
-
       chrome.action.setBadgeText({ text: "" }); // clear badge
       closingInProgress = false;
     }
@@ -167,8 +201,10 @@ async function startCountdownAndClose() {
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "heartbeat") return;
   const tabs = await chrome.tabs.query({});
-  console.log("[Tab Sentry] Heartbeat raw tabs:", tabs);
-  console.log("[Tab Sentry] Heartbeat: open tabs =", tabs.length);
+  console.log("[Tab Sentry] Heartbeat tabs:",
+  tabs.map(t => ({ id: t.id, title: t.title, url: t.url }))
+);
+
 
   if (tabs.length > THRESHOLD_COUNT) {
     console.log("[Tab Sentry] Over threshold, starting cleanup countdown.");
