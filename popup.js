@@ -1,10 +1,36 @@
-// popup.js
-// Renders current open tabs + recently closed tabs with restore
-
 const $ = id => document.getElementById(id);
 
 // -------------------------
-// RENDER OPEN TABS (with lock checkboxes)
+// AUTO-CLEANER TOGGLE BUTTON
+// -------------------------
+async function initToggle() {
+  const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
+  const btn = $("auto-toggle");
+
+  updateToggleUI(btn, autoCleanerEnabled);
+
+  btn.addEventListener("click", async () => {
+    const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
+    const newState = !autoCleanerEnabled;
+    await chrome.storage.local.set({ autoCleanerEnabled: newState });
+    updateToggleUI(btn, newState);
+  });
+}
+
+function updateToggleUI(btn, enabled) {
+  if (enabled) {
+    btn.classList.add("toggle-on");
+    btn.classList.remove("toggle-off");
+    btn.textContent = "ON";
+  } else {
+    btn.classList.add("toggle-off");
+    btn.classList.remove("toggle-on");
+    btn.textContent = "OFF";
+  }
+}
+
+// -------------------------
+// RENDER OPEN TABS
 // -------------------------
 async function renderOpenTabs() {
   const tabs = await chrome.tabs.query({ currentWindow: true });
@@ -12,20 +38,27 @@ async function renderOpenTabs() {
   const lockedSet = new Set(lockedTabs);
 
   const list = $("open-tabs");
+  const emptyState = document.querySelector(".OpenTabs .empty-state");
   list.innerHTML = "";
 
-  // Queue style: oldest at bottom
+  $("ActiveTabCounter").textContent = tabs.length;
+
+  if (tabs.length === 0) {
+    emptyState.style.display = "block";
+    return;
+  } else {
+    emptyState.style.display = "none";
+  }
+
   tabs.sort((a, b) => a.id - b.id);
 
   for (const tab of tabs) {
     const li = document.createElement("li");
 
-    // Lock checkbox
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = lockedSet.has(tab.id);
     checkbox.title = "Lock this tab";
-
     checkbox.addEventListener("change", async () => {
       if (checkbox.checked) {
         await chrome.runtime.sendMessage({ type: "lockTab", tabId: tab.id });
@@ -35,86 +68,115 @@ async function renderOpenTabs() {
       renderOpenTabs();
     });
 
-    // Tab link
+    const favicon = document.createElement("img");
+    favicon.src = tab.favIconUrl || "images/default.png";
+    favicon.className = "favicon";
+
     const a = document.createElement("a");
     a.href = "#";
     a.textContent = tab.title || tab.url;
     a.onclick = () => chrome.tabs.update(tab.id, { active: true });
 
-    li.appendChild(checkbox);
-    li.appendChild(a);
+    const meta = document.createElement("span");
+    const opened = new Date(tab.lastAccessed || Date.now());
+    const mins = Math.floor((Date.now() - opened) / 60000);
+    meta.textContent = ` — Opened ${mins} min ago`;
+    meta.className = "meta";
 
-    // Optional locked marker
-    if (lockedSet.has(tab.id)) {
-      const mark = document.createElement("span");
-      mark.textContent = " ✔";
-      mark.style.color = "green";
-      li.appendChild(mark);
-    }
+    const status = document.createElement("span");
+    status.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
+    status.style.marginLeft = "6px";
+
+    li.appendChild(checkbox);
+    li.appendChild(favicon);
+    li.appendChild(a);
+    li.appendChild(meta);
+    li.appendChild(status);
 
     list.appendChild(li);
   }
 }
 
-
 // -------------------------
-// RENDER RECENTLY CLOSED
+// RENDER CLOSED TABS
 // -------------------------
 async function renderClosedTabs() {
   const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
   const list = $("closed-tabs");
   const emptyState = document.querySelector(".RecentlyClosed .empty-state");
-
   list.innerHTML = "";
 
-  if (closedTabs.length === 0) {
-    // show the "No closed tabs yet" message
-    if (emptyState) emptyState.style.display = "block";
+  $("ResourcesSaved").textContent = closedTabs.length;
+
+  const searchQuery = $("search-closed").value.toLowerCase();
+  const filtered = closedTabs.filter(({ url, title }) => {
+    const text = (title || url).toLowerCase();
+    return text.includes(searchQuery);
+  });
+
+  if (filtered.length === 0) {
+    emptyState.style.display = "block";
     return;
   } else {
-    // hide message when tabs exist
-    if (emptyState) emptyState.style.display = "none";
+    emptyState.style.display = "none";
   }
 
-  closedTabs.forEach(({ url, title, time }) => {
+  filtered.forEach(({ url, title, time }) => {
     const li = document.createElement("li");
 
+    const favicon = document.createElement("img");
+    try {
+      favicon.src = "https://www.google.com/s2/favicons?domain=" + new URL(url).hostname;
+    } catch {
+      favicon.src = "images/default.png";
+    }
+    favicon.className = "favicon";
+
+    const restoreAndRemove = async () => {
+      chrome.runtime.sendMessage({ type: "restoreTab", url, time });
+    };
+
     const a = document.createElement("a");
-    a.href = url;
+    a.href = "#";
     a.textContent = title || url;
-    a.target = "_blank";
-    a.style.fontWeight = "bold";
+    a.onclick = (e) => {
+      e.preventDefault();
+      restoreAndRemove();
+    };
 
     const meta = document.createElement("span");
     meta.textContent = " (" + new Date(time).toLocaleTimeString() + ")";
-    meta.style.fontSize = "11px";
-    meta.style.color = "#888";
+    meta.className = "meta";
 
-    const btn = document.createElement("button");
-    btn.textContent = "Restore";
-    btn.onclick = async () => {
-      // reopen tab
-      await chrome.tabs.create({ url });
+    const btnRestore = document.createElement("button");
+    btnRestore.textContent = "Restore";
+    btnRestore.onclick = restoreAndRemove;
 
-      // remove restored tab from history
+    const btnDelete = document.createElement("button");
+    btnDelete.textContent = "✖";
+    btnDelete.title = "Remove from history";
+    btnDelete.onclick = async () => {
       const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
-      const newList = closedTabs.filter(
-        t => !(t.url === url && t.time === time)
-      );
+      const newList = closedTabs.filter(t => !(t.url === url && t.time === time));
       await chrome.storage.local.set({ closedTabs: newList });
-
-      // refresh both lists
       renderClosedTabs();
       renderOpenTabs();
     };
 
+    li.appendChild(favicon);
     li.appendChild(a);
     li.appendChild(meta);
-    li.appendChild(btn);
+    li.appendChild(btnRestore);
+    li.appendChild(btnDelete);
+
     list.appendChild(li);
   });
 }
 
+// -------------------------
+// SEARCH FILTER
+// -------------------------
+$("search-closed").addEventListener("input", renderClosedTabs);
 
 // -------------------------
 // CLEAR HISTORY
@@ -130,11 +192,48 @@ $("clear").addEventListener("click", async () => {
 // -------------------------
 renderOpenTabs();
 renderClosedTabs();
+initToggle();
 
-// Listen for refresh messages from background script
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === "refresh") {
     renderOpenTabs();
     renderClosedTabs();
   }
 });
+
+// -------------------------
+// INLINE SETTINGS VIEW
+// -------------------------
+const settingsBtn = document.getElementById("settings-btn");
+const settingsView = document.getElementById("settings-view");
+
+if (settingsBtn && settingsView) {
+  settingsBtn.addEventListener("click", () => {
+    settingsView.classList.toggle("open");
+    if (settingsView.classList.contains("open")) {
+      loadSettings();
+    }
+  });
+}
+
+async function loadSettings() {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  $("threshold").value = settings.threshold ?? 5;
+  $("idle-timeout").value = settings.idleTimeout ?? 10;
+}
+
+const saveBtn = document.getElementById("save-settings");
+if (saveBtn) {
+  saveBtn.addEventListener("click", async () => {
+    const threshold = parseInt($("threshold").value, 10);
+    const idleTimeout = parseInt($("idle-timeout").value, 10);
+
+    await chrome.storage.local.set({
+      settings: { threshold, idleTimeout }
+    });
+
+    const status = $("status");
+    status.textContent = "Saved!";
+    setTimeout(() => (status.textContent = ""), 2000);
+  });
+}

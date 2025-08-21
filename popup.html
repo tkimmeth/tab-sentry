@@ -2,52 +2,65 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tab Sentry</title>
+  <title>TabSentry</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+  
 <body>
   <div class="container">
-    <h1>Tab Sentry</h1>
+    <!-- Header -->
+    <div class="header-bar">
+      <!-- Toggle left -->
+      <button id="auto-toggle" class="toggle-off">OFF</button>
 
-    <!-- Counters -->
-    <div class="measurables">
-      <div class="counter">
-        <h4>Active Tabs:</h4>
-        <p id="ActiveTabCounter"></p>
+      <!-- Center title -->
+      <h1 class="title">Tab Sentry</h1>
+
+      <!-- Settings gear right -->
+      <button id="settings-btn" title="Settings" class="settings-btn">⚙️</button>
+    </div>
+
+    <!-- Main View -->
+    <div id="main-view">
+      <!-- Open Tabs -->
+      <div class="OpenTabs">
+        <h2>Open Tabs (<span id="ActiveTabCounter">0</span>)</h2>
+        <ul id="open-tabs"></ul>
+        <div class="empty-state">No open tabs</div>
       </div>
-      <div class="resources">
-        <h4>Saved Resources:</h4>
-        <p id="ResourcesSaved"></p>
+
+      <hr>
+
+      <!-- Recently Closed -->
+      <div class="RecentlyClosed">
+        <div class="section-header">
+          <h2>Recently Closed (<span id="ResourcesSaved">0</span>)</h2>
+          <input type="text" id="search-closed" placeholder="Search..." />
+          <button id="clear">Clear history</button>
+        </div>
+        <ul id="closed-tabs"></ul>
+        <div class="empty-state">No closed tabs yet</div>
       </div>
     </div>
 
-    <hr>
-
-    <!-- Open Tabs -->
-    <div class="OpenTabs">
-      <h2>Open Tabs</h2>
-      <ul id="open-tabs"></ul>
-      <div class="empty-state">
-        <div class="empty-state-icon"></div>
-      </div>
+    <!-- Settings View (hidden, toggled by JS) -->
+    <div id="settings-view">
+      <h2>⚙️ Settings</h2>
+      <label>
+        Tab Threshold:
+        <input type="number" id="threshold" min="1" />
+      </label>
+      <br>
+      <label>
+        Idle Timeout (minutes):
+        <input type="number" id="idle-timeout" min="1" />
+      </label>
+      <br><br>
+      <button id="save-settings">Save</button>
+      <span id="status"></span>
     </div>
 
-    <hr>
-
-    <!-- Recently Closed -->
-    <div class="RecentlyClosed">
-      <div class="section-header">
-        <h2>Recently Closed</h2>
-        <button id="clear">Clear history</button>
-      </div>
-      <ul id="closed-tabs"></ul>
-      <div class="empty-state">
-        <div id="history-empty-state-icon"></div>
-        No closed tabs yet
-      </div>
-    </div>
   </div>
-
   <script src="popup.js"></script>
 </body>
 </html>

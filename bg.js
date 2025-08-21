@@ -1,83 +1,21 @@
 // bg.js
 // Tracks tabs, saves history, heartbeat, auto-closes idle ones.
 
-// -------------------------
-// INSTALL
-// -------------------------
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create("heartbeat", { periodInMinutes: .25 }); // every 15 seconds
+  chrome.alarms.create("heartbeat", { periodInMinutes: 0.25 }); // every 15s
   console.log("[Tab Sentry] Heartbeat alarm created");
 });
 
 // -------------------------
-// MESSAGE HANDLER (ping test)
+// TAB STATE
 // -------------------------
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === "notify") {
-    console.log("[Tab Sentry] Received ping from popup", new Date().toISOString());
-    sendResponse({ ok: true });
-    return true;
-  }
-});
-
-// -------------------------
-// TAB TRACKING + STORAGE
-// -------------------------
-const lastActive = {};    // tabId -> last active timestamp
+const lastActive = {};
 let tabUrls = {};
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete") {
-    tabUrls[tabId] = {
-      url: tab.url,
-      title: tab.title || new URL(tab.url).hostname
-    };
-        lastActive[tabId] = Date.now(); 
-  }
-});
-
-// Update lastActive when tab is activated
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  lastActive[tabId] = Date.now();
-});
-
-// Update lastActive when window focus changes
-chrome.windows.onFocusChanged.addListener(async (windowId) => {
-  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-  const [activeTab] = await chrome.tabs.query({ active: true, windowId });
-  if (activeTab) lastActive[activeTab.id] = Date.now();
-});
-
-// Normalize URLs (to dedupe better, esp. YouTube)
-function normalizeUrl(raw) {
-  try {
-    const u = new URL(raw);
-
-    // YouTube special case — only keep video + playlist
-    if (u.hostname.includes("youtube.com") && u.searchParams.has("v")) {
-      let base = `https://www.youtube.com/watch?v=${u.searchParams.get("v")}`;
-      if (u.searchParams.has("list")) {
-        base += "&list=" + u.searchParams.get("list");
-      }
-      return base;
-    }
-
-    // Strip junk params
-    u.searchParams.delete("utm_source");
-    u.searchParams.delete("utm_medium");
-    u.searchParams.delete("utm_campaign");
-
-    return u.toString();
-  } catch {
-    return raw;
-  }
-}
-
-// -------------------------
-// Locking the tabs
-// -------------------------
 const lockedTabs = new Set();
 
+// -------------------------
+// LOCKING STATE
+// -------------------------
 async function saveLocks() {
   await chrome.storage.local.set({ lockedTabs: Array.from(lockedTabs) });
 }
@@ -89,7 +27,6 @@ async function loadLocks() {
 }
 loadLocks();
 
-// Listen for popup commands
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "lockTab") {
     lockedTabs.add(msg.tabId);
@@ -99,37 +36,30 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     lockedTabs.delete(msg.tabId);
     saveLocks();
     sendResponse({ ok: true });
+  } else if (msg.type === "restoreTab") {
+    handleRestoreTab(msg.url, msg.time).then(() => sendResponse({ ok: true }));
+    return true; // keep channel open for async
   }
 });
 
 // -------------------------
-// Save closed tab URL (dedup stack)
+// SAVE CLOSED TABS + NOTIFY POPUP
 // -------------------------
 async function saveClosedTab(tabId) {
   const tabData = tabUrls[tabId];
   if (!tabData || !tabData.url) return;
 
   const { url, title } = tabData;
-
-  // skip internal pages
-  if (url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:")) {
-    console.log("[Tab Sentry] Skipped internal page:", url);
-    return;
-  }
+  if (url.startsWith("chrome://") || url.startsWith("edge://") || url.startsWith("about:")) return;
 
   const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
+  const filtered = closedTabs.filter(t => !(t.url === url));
+  filtered.unshift({ url, title, time: new Date().toISOString() });
 
-  const filtered = closedTabs.filter(t => t.url !== url);
-
-  filtered.unshift({
-    url,
-    title,
-    time: new Date().toISOString()
-  });
-
-  await chrome.storage.local.set({ closedTabs: filtered.slice(0, 20) });
-
+  await chrome.storage.local.set({ closedTabs: filtered.slice(0, 50) });
   console.log("[Tab Sentry] Saved closed tab:", title, url);
+
+  try { chrome.runtime.sendMessage({ type: "refresh" }); } catch {}
 }
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
@@ -137,19 +67,62 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   delete tabUrls[tabId];
 });
 
+// -------------------------
+// TRACK TAB ACTIVITY
+// -------------------------
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete") {
+    tabUrls[tabId] = { url: tab.url, title: tab.title || new URL(tab.url).hostname };
+    lastActive[tabId] = Date.now();
+  }
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  lastActive[tabId] = Date.now();
+});
+
+chrome.windows.onFocusChanged.addListener(async (windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+  if (activeTab) lastActive[activeTab.id] = Date.now();
+});
 
 // -------------------------
-// AUTO-CLOSE LOGIC
+// RESTORE HANDLER
 // -------------------------
-const COUNTDOWN_SECONDS = 5;    // demo-friendly (10s countdown)
-const THRESHOLD_COUNT = 3;       // start cleaning if >5 tabs
-const CLOSE_INTERVAL_MINUTES = .1;
-const whitelist = ["google.com", "surveymonkey.com", "docs.google.com"];
+async function handleRestoreTab(url, time) {
+  await chrome.tabs.create({ url });
+
+  const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
+  const newList = closedTabs.filter(t => !(t.url === url && t.time === time));
+  await chrome.storage.local.set({ closedTabs: newList });
+
+  // refresh popup if open
+  try { chrome.runtime.sendMessage({ type: "refresh" }); } catch {}
+}
+
+// -------------------------
+// AUTO-CLOSE LOGIC (Gentle Close)
+// -------------------------
+let COUNTDOWN_SECONDS = 5;
+let THRESHOLD_COUNT = 5;
+let IDLE_MINUTES = 10;
+
+async function loadSettings() {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  THRESHOLD_COUNT = settings.threshold ?? THRESHOLD_COUNT;
+  IDLE_MINUTES = settings.idleTimeout ?? IDLE_MINUTES;
+  console.log("[Tab Sentry] Settings loaded:", { THRESHOLD_COUNT, IDLE_MINUTES });
+}
+loadSettings();
+
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.settings) loadSettings();
+});
 
 let countdown = 0;
 let closingInProgress = false;
 
-// Badge countdown + close logic
 async function startCountdownAndClose() {
   if (closingInProgress) return;
   closingInProgress = true;
@@ -163,33 +136,33 @@ async function startCountdownAndClose() {
       clearInterval(interval);
 
       const tabs = await chrome.tabs.query({ currentWindow: true });
+      console.log("[Tab Sentry] Gentle Close cycle: open tabs =", tabs.length);
+
       if (tabs.length > THRESHOLD_COUNT) {
         let oldestTab = null;
-        let oldestTime = Date.now();
+        let oldestTime = Infinity;  // FIX: prevents index 0 stall
 
         for (const tab of tabs) {
-      if (!tab.url || tab.pinned) continue;
-      if (lockedTabs.has(tab.id)) continue;
-      const domain = new URL(tab.url).hostname;
-      if (whitelist.some(w => domain.includes(w))) continue;
+          if (!tab.url || tab.pinned) continue;
+          if (lockedTabs.has(tab.id)) continue;
 
-      const last = lastActive[tab.id] || Date.now();
-      if (last < oldestTime) {
-        oldestTime = last;
-        oldestTab = tab;
-      }
-    }
+          const domain = new URL(tab.url).hostname;
+          if (["docs.google.com", "surveymonkey.com"].some(w => domain.includes(w))) continue;
 
+          const last = lastActive[tab.id] || Date.now();
+          if (last < oldestTime) {
+            oldestTime = last;
+            oldestTab = tab;
+          }
+        }
 
         if (oldestTab) {
-          console.log("[Tab Sentry] Closing tab:", oldestTab.url);
           await saveClosedTab(oldestTab.id);
           chrome.tabs.remove(oldestTab.id);
-
-          chrome.runtime.sendMessage({ type: "refresh" });
         }
       }
-      chrome.action.setBadgeText({ text: "" }); // clear badge
+
+      chrome.action.setBadgeText({ text: "" });
       closingInProgress = false;
     }
 
@@ -197,20 +170,16 @@ async function startCountdownAndClose() {
   }, 1000);
 }
 
-// Heartbeat runs once per minute
+// -------------------------
+// HEARTBEAT
+// -------------------------
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "heartbeat") return;
   const tabs = await chrome.tabs.query({});
-  console.log("[Tab Sentry] Heartbeat tabs:",
-  tabs.map(t => ({ id: t.id, title: t.title, url: t.url }))
-);
-
-
+  console.log("[Tab Sentry] Heartbeat: open tabs =", tabs.length);
   if (tabs.length > THRESHOLD_COUNT) {
-    console.log("[Tab Sentry] Over threshold, starting cleanup countdown.");
     startCountdownAndClose();
   }
 });
 
 console.log("[Tab Sentry] Background service ready", new Date().toISOString());
-chrome.alarms.getAll(a => console.log("Alarms:", a));

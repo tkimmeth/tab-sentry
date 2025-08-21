@@ -1,4 +1,4 @@
-//manifest.json 
+//manifest.json
 
 {
   "manifest_version": 3,
@@ -17,6 +17,7 @@
   "background": {
     "service_worker": "bg.js"
   },
+  "options_page": "settings.html",
   "action": {
     "default_icon": {
       "16": "images/sentry.png",
