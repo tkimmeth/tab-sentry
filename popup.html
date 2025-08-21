@@ -8,57 +8,48 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>Tab Sentry</h1>
+  <div class="container">
+    <h1>TabSentry</h1>
 
-  <!-- Current open tabs -->
-  <h2>Open Tabs</h2>
-  <ul id="open-tabs"></ul>
+    <!-- Metrics -->
+    <div class="measurables">
+      <div class="counter">
+        <h4>Active Tabs:</h4>
+        <p id="ActiveTabCounter"></p>
+      </div>
+      <div class="resources">
+        <h4>Saved Resources:</h4>
+        <p id="ResourcesSaved"></p>
+      </div>
+    </div>
 
-  <!-- Recently closed -->
-  <h2>Recently Closed</h2>
-  <button id="clear">Clear history</button>
-  <ul id="closed-tabs"></ul>
+    <hr>
 
+    <!-- Open Tabs section -->
+    <div class="OpenTabs">
+      <h2>Open Tabs <small>(✔ = Locked)</small></h2>
+      <ul id="open-tabs"></ul>
+      <div class="empty-state">
+        <div class="empty-state-icon"></div>
+        No active tabs
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Recently Closed section -->
+    <div class="RecentlyClosed">
+      <h2>Recently Closed</h2>
+      <button id="clear">Clear history</button>
+      <ul id="closed-tabs"></ul>
+      <div class="empty-state">
+        <div id="history-empty-state-icon"></div>
+        No closed tabs yet
+      </div>
+    </div>
+  </div>
+
+  <!-- only one script, all logic in popup.js -->
   <script src="popup.js"></script>
 </body>
 </html>
-<script>
-  // This script will handle the popup logic, fetching open and closed tabs
-  document.addEventListener('DOMContentLoaded', async () => {
-    const openTabsList = document.getElementById('open-tabs');
-    const closedTabsList = document.getElementById('closed-tabs');
-    const clearButton = document.getElementById('clear');
-
-    // Fetch open tabs
-    const openTabs = await chrome.tabs.query({});
-    openTabs.forEach(tab => {
-      const li = document.createElement('li');
-      li.textContent = `${tab.title} (${tab.url})`;
-      openTabsList.appendChild(li);
-    });
-
-    // Fetch recently closed tabs
-    const closedTabs = await chrome.sessions.getRecentlyClosed();
-    closedTabs.forEach(session => {
-      if (session.tab) {
-        const li = document.createElement('li');
-        li.textContent = `${session.tab.title} (${session.tab.url})`;
-        closedTabsList.appendChild(li);
-      }
-    });
-
-    // Clear history button
-    clearButton.addEventListener('click', async () => {
-      await chrome.sessions.clear();
-      closedTabsList.innerHTML = '';
-      alert('Closed tabs history cleared.');
-    });
-  });
-</script>
-<script src="popup.js"></script>
-<script>
-  // This script will handle the popup logic, fetching open and closed tabs
-  document.addEventListener('DOMContentLoaded', async () => {
-    const openTabsList = document.getElementById('open-tabs');
-    const closedTabsList = document.getElementById('closed-tabs');
-    const clearButton = document.getElementById('clear'); 

@@ -4,26 +4,54 @@
 const $ = id => document.getElementById(id);
 
 // -------------------------
-// RENDER OPEN TABS
+// RENDER OPEN TABS (with lock checkboxes)
 // -------------------------
 async function renderOpenTabs() {
   const tabs = await chrome.tabs.query({ currentWindow: true });
+  const { lockedTabs = [] } = await chrome.storage.local.get("lockedTabs");
+  const lockedSet = new Set(lockedTabs);
+
   const list = $("open-tabs");
   list.innerHTML = "";
 
-  // Queue-like order: oldest at bottom
+  // Queue style: oldest at bottom
   tabs.sort((a, b) => a.id - b.id);
 
   for (const tab of tabs) {
     const li = document.createElement("li");
 
+    // Lock checkbox
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = lockedSet.has(tab.id);
+    checkbox.title = "Lock this tab";
+
+    checkbox.addEventListener("change", async () => {
+      if (checkbox.checked) {
+        await chrome.runtime.sendMessage({ type: "lockTab", tabId: tab.id });
+      } else {
+        await chrome.runtime.sendMessage({ type: "unlockTab", tabId: tab.id });
+      }
+      renderOpenTabs();
+    });
+
+    // Tab link
     const a = document.createElement("a");
     a.href = "#";
     a.textContent = tab.title || tab.url;
-    a.style.fontWeight = "bold";
     a.onclick = () => chrome.tabs.update(tab.id, { active: true });
 
+    li.appendChild(checkbox);
     li.appendChild(a);
+
+    // Optional locked marker
+    if (lockedSet.has(tab.id)) {
+      const mark = document.createElement("span");
+      mark.textContent = " ✔";
+      mark.style.color = "green";
+      li.appendChild(mark);
+    }
+
     list.appendChild(li);
   }
 }
@@ -53,11 +81,17 @@ async function renderClosedTabs() {
     const btn = document.createElement("button");
     btn.textContent = "Restore";
     btn.onclick = async () => {
+      // reopen tab
       await chrome.tabs.create({ url });
+
+      // remove restored tab from history
       const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
       const newList = closedTabs.filter(t => !(t.url === url && t.time === time));
       await chrome.storage.local.set({ closedTabs: newList });
+
+      // refresh both lists
       renderClosedTabs();
+      renderOpenTabs();
     };
 
     li.appendChild(a);
@@ -67,12 +101,14 @@ async function renderClosedTabs() {
   });
 }
 
+
 // -------------------------
 // CLEAR HISTORY
 // -------------------------
 $("clear").addEventListener("click", async () => {
   await chrome.storage.local.set({ closedTabs: [] });
   renderClosedTabs();
+  renderOpenTabs();
 });
 
 // -------------------------
@@ -80,7 +116,11 @@ $("clear").addEventListener("click", async () => {
 // -------------------------
 renderOpenTabs();
 renderClosedTabs();
-// Listen for tab updates to refresh open tabs
-chrome.tabs.onUpdated.addListener(() => renderOpenTabs());
-// Listen for tab removal to refresh closed tabs
-chrome.tabs.onRemoved.addListener(() => renderClosedTabs());
+
+// Listen for refresh messages from background script
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === "refresh") {
+    renderOpenTabs();
+    renderClosedTabs();
+  }
+});
