@@ -8,6 +8,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create("heartbeat", { periodInMinutes: .25 }); // every 15 seconds
   console.log("[Tab Sentry] Heartbeat alarm created");
 });
+
 // -------------------------
 // MESSAGE HANDLER (ping test)
 // -------------------------
@@ -71,7 +72,6 @@ function normalizeUrl(raw) {
     return raw;
   }
 }
-
 
 // -------------------------
 // Locking the tabs
