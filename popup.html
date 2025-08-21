@@ -19,9 +19,47 @@
   <button id="clear">Clear history</button>
   <ul id="closed-tabs"></ul>
 
+  <div class = "container">
+        <h1>TabSentry</h1>
+        <div class = "measurables">
+            <div class = "counter">
+                <h4>Active Tabs: </h4>
+                <p id = "ActiveTabCounter"></p>
+            </div>
+            <div class = "resources">
+                <h4>Saved Resources: </h4>
+                <p id = "ResourcesSaved"></p>
+            </div>
+        </div>
+  <hr>
+  <!-- List of Active Tabs -->
+  <div class = "OpenTabs">
+    <h4>Open Tabs</h4>
+    <button id="lock">Lock Tab</button>
+    <div id="activeTabs">
+        <ol id="openTabs"></ol> 
+        <div class= "Empty State">
+            <div class="empty-state-icon"> </div> <!-- empty state icon here -->
+            No active tabs
+        </div>
+    </div>
+
+  <hr>    
+  <!-- Recently closed section -->
+  <div class ="RecentlyClosed">
+    <h4>Recently Closed</h4>
+    <button id="clear">Clear history</button>
+    <div id = "closedTabs">
+        <div class = "empty-state">
+            <div id = "history-empty-state-icon">
+                No closed tabs yet
+
+  <ol id="closed"></ol> <!-- THIS is the #closed list -->
+
   <script src="popup.js"></script>
 </body>
 </html>
+
 <script>
   // This script will handle the popup logic, fetching open and closed tabs
   document.addEventListener('DOMContentLoaded', async () => {
@@ -61,4 +99,4 @@
   document.addEventListener('DOMContentLoaded', async () => {
     const openTabsList = document.getElementById('open-tabs');
     const closedTabsList = document.getElementById('closed-tabs');
-    const clearButton = document.getElementById('clear'); 
+    const clearButton = document.getElementById('clear');})
