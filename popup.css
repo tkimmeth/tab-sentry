@@ -6,7 +6,58 @@ button { display:inline-block; vertical-align: middle; margin: 5px 0; padding: 6
     float: right;
 }
 #clear{
-   float: right;
+    display: inline-block;
+    vertical-align: right;
 }
 #out { margin-top: 8px; font-size: 12px; }
 #status { color: #0a7; margin-bottom: 6px; }
+body {
+  width: 600px;   /* wider */
+  height: 700px;  /* taller */
+  margin: 0;
+  padding: 10px;
+  font-family: sans-serif;
+  overflow-y: auto; /* scroll if it overflows */
+}
+
+h1, h2 {
+  margin: 5px 0;
+}
+
+ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+li {
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Recently Closed header row */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+#clear {
+  background-color: #ff4d4d;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#clear:hover {
+  background-color: #e60000;
+}

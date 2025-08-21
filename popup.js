@@ -56,13 +56,25 @@ async function renderOpenTabs() {
   }
 }
 
+
 // -------------------------
 // RENDER RECENTLY CLOSED
 // -------------------------
 async function renderClosedTabs() {
   const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
   const list = $("closed-tabs");
+  const emptyState = document.querySelector(".RecentlyClosed .empty-state");
+
   list.innerHTML = "";
+
+  if (closedTabs.length === 0) {
+    // show the "No closed tabs yet" message
+    if (emptyState) emptyState.style.display = "block";
+    return;
+  } else {
+    // hide message when tabs exist
+    if (emptyState) emptyState.style.display = "none";
+  }
 
   closedTabs.forEach(({ url, title, time }) => {
     const li = document.createElement("li");
@@ -86,7 +98,9 @@ async function renderClosedTabs() {
 
       // remove restored tab from history
       const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
-      const newList = closedTabs.filter(t => !(t.url === url && t.time === time));
+      const newList = closedTabs.filter(
+        t => !(t.url === url && t.time === time)
+      );
       await chrome.storage.local.set({ closedTabs: newList });
 
       // refresh both lists
