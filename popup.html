@@ -10,20 +10,55 @@
 <body>
   <h1>Tab Sentry</h1>
 
-  <div id="status">Popup loaded</div>
+  <!-- Current open tabs -->
+  <h2>Open Tabs</h2>
+  <ul id="open-tabs"></ul>
 
-  <!-- Control buttons -->
-  <button id="count">Count tabs</button>
-  <button id="ping">Ping background</button>
-  <div id="out"></div>
-  <button id="debug">Debug Stack</button>
-  <hr>
-
-  <!-- Recently closed section -->
+  <!-- Recently closed -->
   <h2>Recently Closed</h2>
   <button id="clear">Clear history</button>
-  <ul id="closed"></ul> <!-- THIS is the #closed list -->
+  <ul id="closed-tabs"></ul>
 
   <script src="popup.js"></script>
 </body>
 </html>
+<script>
+  // This script will handle the popup logic, fetching open and closed tabs
+  document.addEventListener('DOMContentLoaded', async () => {
+    const openTabsList = document.getElementById('open-tabs');
+    const closedTabsList = document.getElementById('closed-tabs');
+    const clearButton = document.getElementById('clear');
+
+    // Fetch open tabs
+    const openTabs = await chrome.tabs.query({});
+    openTabs.forEach(tab => {
+      const li = document.createElement('li');
+      li.textContent = `${tab.title} (${tab.url})`;
+      openTabsList.appendChild(li);
+    });
+
+    // Fetch recently closed tabs
+    const closedTabs = await chrome.sessions.getRecentlyClosed();
+    closedTabs.forEach(session => {
+      if (session.tab) {
+        const li = document.createElement('li');
+        li.textContent = `${session.tab.title} (${session.tab.url})`;
+        closedTabsList.appendChild(li);
+      }
+    });
+
+    // Clear history button
+    clearButton.addEventListener('click', async () => {
+      await chrome.sessions.clear();
+      closedTabsList.innerHTML = '';
+      alert('Closed tabs history cleared.');
+    });
+  });
+</script>
+<script src="popup.js"></script>
+<script>
+  // This script will handle the popup logic, fetching open and closed tabs
+  document.addEventListener('DOMContentLoaded', async () => {
+    const openTabsList = document.getElementById('open-tabs');
+    const closedTabsList = document.getElementById('closed-tabs');
+    const clearButton = document.getElementById('clear'); 
