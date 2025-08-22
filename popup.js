@@ -1,239 +1,72 @@
-const $ = id => document.getElementById(id);
+// popup.js
 
-// -------------------------
-// AUTO-CLEANER TOGGLE BUTTON
-// -------------------------
-async function initToggle() {
-  const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
-  const btn = $("auto-toggle");
+async function render() {
+  const list = document.getElementById("open-tabs");
+  const closedList = document.getElementById("closed-tabs");
+  list.innerHTML = "";
+  closedList.innerHTML = "";
 
-  updateToggleUI(btn, autoCleanerEnabled);
-
-  btn.addEventListener("click", async () => {
-    const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
-    const newState = !autoCleanerEnabled;
-    await chrome.storage.local.set({ autoCleanerEnabled: newState });
-    updateToggleUI(btn, newState);
-  });
-}
-
-function updateToggleUI(btn, enabled) {
-  if (enabled) {
-    btn.classList.add("toggle-on");
-    btn.classList.remove("toggle-off");
-    btn.textContent = "ON";
-  } else {
-    btn.classList.add("toggle-off");
-    btn.classList.remove("toggle-on");
-    btn.textContent = "OFF";
-  }
-}
-
-// -------------------------
-// RENDER OPEN TABS
-// -------------------------
-async function renderOpenTabs() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
-  const { lockedTabs = [] } = await chrome.storage.local.get("lockedTabs");
+  const tabs = await chrome.tabs.query({});
+  const { lockedTabs = [], closedTabs = [], autoCleanerEnabled = false } =
+    await chrome.storage.local.get(["lockedTabs", "closedTabs", "autoCleanerEnabled"]);
   const lockedSet = new Set(lockedTabs);
 
-  const list = $("open-tabs");
-  const emptyState = document.querySelector(".OpenTabs .empty-state");
-  list.innerHTML = "";
-
-  $("ActiveTabCounter").textContent = tabs.length;
-
-  if (tabs.length === 0) {
-    emptyState.style.display = "block";
-    return;
-  } else {
-    emptyState.style.display = "none";
-  }
-
+  // Sort by tab.id (proxy for creation order): oldest at bottom
   tabs.sort((a, b) => a.id - b.id);
 
   for (const tab of tabs) {
     const li = document.createElement("li");
+    const ageMins = Math.floor((Date.now() - (tab.lastAccessed || Date.now())) / 60000);
 
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = lockedSet.has(tab.id);
-    checkbox.title = "Lock this tab";
-    checkbox.addEventListener("change", async () => {
-      if (checkbox.checked) {
-        await chrome.runtime.sendMessage({ type: "lockTab", tabId: tab.id });
-      } else {
-        await chrome.runtime.sendMessage({ type: "unlockTab", tabId: tab.id });
-      }
-      renderOpenTabs();
+    li.innerHTML = `
+      <input type="checkbox" ${lockedSet.has(tab.id) ? "checked" : ""}>
+      ${tab.title}
+      <span>— Opened ${ageMins} min ago</span>
+      <button class="lock">${lockedSet.has(tab.id) ? "🔒" : "🔓"}</button>
+    `;
+
+    li.querySelector("input").addEventListener("change", e => {
+      chrome.runtime.sendMessage({ type: e.target.checked ? "lockTab" : "unlockTab", tabId: tab.id });
     });
-
-    const favicon = document.createElement("img");
-    favicon.src = tab.favIconUrl || "images/default.png";
-    favicon.className = "favicon";
-
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = tab.title || tab.url;
-    a.onclick = () => chrome.tabs.update(tab.id, { active: true });
-
-    const meta = document.createElement("span");
-    const opened = new Date(tab.lastAccessed || Date.now());
-    const mins = Math.floor((Date.now() - opened) / 60000);
-    meta.textContent = ` — Opened ${mins} min ago`;
-    meta.className = "meta";
-
-    const status = document.createElement("span");
-    status.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
-    status.style.marginLeft = "6px";
-
-    li.appendChild(checkbox);
-    li.appendChild(favicon);
-    li.appendChild(a);
-    li.appendChild(meta);
-    li.appendChild(status);
-
     list.appendChild(li);
   }
-}
 
-// -------------------------
-// RENDER CLOSED TABS
-// -------------------------
-async function renderClosedTabs() {
-  const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
-  const list = $("closed-tabs");
-  const emptyState = document.querySelector(".RecentlyClosed .empty-state");
-  list.innerHTML = "";
-
-  $("ResourcesSaved").textContent = closedTabs.length;
-
-  const searchQuery = $("search-closed").value.toLowerCase();
-  const filtered = closedTabs.filter(({ url, title }) => {
-    const text = (title || url).toLowerCase();
-    return text.includes(searchQuery);
-  });
-
-  if (filtered.length === 0) {
-    emptyState.style.display = "block";
-    return;
+  // Recently closed
+  if (closedTabs.length === 0) {
+    const emptyLi = document.createElement("li");
+    emptyLi.textContent = "No closed tabs yet";
+    closedList.appendChild(emptyLi);
   } else {
-    emptyState.style.display = "none";
+    closedTabs.forEach(tab => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        ${tab.title}
+        <button class="restore">Restore</button>
+        <button class="delete">✖</button>
+      `;
+      li.querySelector(".restore").addEventListener("click", () => {
+        chrome.runtime.sendMessage({ type: "restoreTab", url: tab.url, time: tab.time });
+      });
+      li.querySelector(".delete").addEventListener("click", () => {
+        chrome.runtime.sendMessage({ type: "deleteClosedTab", url: tab.url, time: tab.time });
+      });
+      closedList.appendChild(li);
+    });
   }
 
-  filtered.forEach(({ url, title, time }) => {
-    const li = document.createElement("li");
+  // Toggle switch
+  const toggle = document.getElementById("toggle-cleaner");
+  toggle.textContent = autoCleanerEnabled ? "ON" : "OFF";
+  toggle.className = autoCleanerEnabled ? "on" : "off";
 
-    const favicon = document.createElement("img");
-    try {
-      favicon.src = "https://www.google.com/s2/favicons?domain=" + new URL(url).hostname;
-    } catch {
-      favicon.src = "images/default.png";
-    }
-    favicon.className = "favicon";
-
-    const restoreAndRemove = async () => {
-      chrome.runtime.sendMessage({ type: "restoreTab", url, time });
-    };
-
-    const a = document.createElement("a");
-    a.href = "#";
-    a.textContent = title || url;
-    a.onclick = (e) => {
-      e.preventDefault();
-      restoreAndRemove();
-    };
-
-    const meta = document.createElement("span");
-    meta.textContent = " (" + new Date(time).toLocaleTimeString() + ")";
-    meta.className = "meta";
-
-    const btnRestore = document.createElement("button");
-    btnRestore.textContent = "Restore";
-    btnRestore.onclick = restoreAndRemove;
-
-    const btnDelete = document.createElement("button");
-    btnDelete.textContent = "✖";
-    btnDelete.title = "Remove from history";
-    btnDelete.onclick = async () => {
-      const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
-      const newList = closedTabs.filter(t => !(t.url === url && t.time === time));
-      await chrome.storage.local.set({ closedTabs: newList });
-      renderClosedTabs();
-      renderOpenTabs();
-    };
-
-    li.appendChild(favicon);
-    li.appendChild(a);
-    li.appendChild(meta);
-    li.appendChild(btnRestore);
-    li.appendChild(btnDelete);
-
-    list.appendChild(li);
-  });
+  toggle.onclick = async () => {
+    await chrome.storage.local.set({ autoCleanerEnabled: !autoCleanerEnabled });
+    render();
+  };
 }
-
-// -------------------------
-// SEARCH FILTER
-// -------------------------
-$("search-closed").addEventListener("input", renderClosedTabs);
-
-// -------------------------
-// CLEAR HISTORY
-// -------------------------
-$("clear").addEventListener("click", async () => {
-  await chrome.storage.local.set({ closedTabs: [] });
-  renderClosedTabs();
-  renderOpenTabs();
-});
-
-// -------------------------
-// INIT
-// -------------------------
-renderOpenTabs();
-renderClosedTabs();
-initToggle();
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === "refresh") {
-    renderOpenTabs();
-    renderClosedTabs();
-  }
+  if (msg.type === "refresh") render();
 });
 
-// -------------------------
-// INLINE SETTINGS VIEW
-// -------------------------
-const settingsBtn = document.getElementById("settings-btn");
-const settingsView = document.getElementById("settings-view");
-
-if (settingsBtn && settingsView) {
-  settingsBtn.addEventListener("click", () => {
-    settingsView.classList.toggle("open");
-    if (settingsView.classList.contains("open")) {
-      loadSettings();
-    }
-  });
-}
-
-async function loadSettings() {
-  const { settings = {} } = await chrome.storage.local.get("settings");
-  $("threshold").value = settings.threshold ?? 5;
-  $("idle-timeout").value = settings.idleTimeout ?? 10;
-}
-
-const saveBtn = document.getElementById("save-settings");
-if (saveBtn) {
-  saveBtn.addEventListener("click", async () => {
-    const threshold = parseInt($("threshold").value, 10);
-    const idleTimeout = parseInt($("idle-timeout").value, 10);
-
-    await chrome.storage.local.set({
-      settings: { threshold, idleTimeout }
-    });
-
-    const status = $("status");
-    status.textContent = "Saved!";
-    setTimeout(() => (status.textContent = ""), 2000);
-  });
-}
+render();
