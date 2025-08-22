@@ -10,6 +10,12 @@ body {
   min-width: 420px;
 }
 
+.status{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .container {
   background: #2c3e50; /* card */
   border-radius: 10px;
