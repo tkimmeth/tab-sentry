@@ -151,6 +151,7 @@ async function runHeartbeat() {
       if (!t || !t.id || !t.url) return false;
       if (t.pinned) return false;
       if (locked.has(t.id)) return false;
+      if(t.audible) return false; //TAB AUDIBLE CHECK
       let host = ""; try { host = new URL(t.url).hostname; } catch {}
       if (["docs.google.com", "surveymonkey.com"].some(w => host.includes(w))) return false;
       return true;

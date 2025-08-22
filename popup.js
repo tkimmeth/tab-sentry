@@ -85,9 +85,20 @@ async function renderOpenTabs() {
     meta.textContent = ` — Opened ${mins} min ago`;
     meta.className = "meta";
 
+
     const status = document.createElement("span");
+    status.className = "status"; //CSS modifier
+    //Audible indicator
+    if(tab.audible)
+    {
+      const audioStatus = document.createElement("span");
+      audioStatus.textContent = "🔊";
+      status.style.marginLeft = "6px";
+      status.appendChild(audioStatus);
+    }
+    const lockIcon = document.createElement("span");
     status.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
-    status.style.marginLeft = "6px";
+    status.appendChild(lockIcon);
 
     li.appendChild(checkbox);
     li.appendChild(favicon);
