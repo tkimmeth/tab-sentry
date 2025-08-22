@@ -224,3 +224,8 @@ if (saveBtn) {
     setTimeout(() => (status.textContent = ""), 2000);
   });
 }
+
+// Btn stays blue while the settings are open 
+settingsBtn.addEventListener("click", () => {
+  settingsBtn.classList.toggle("active"); // add/remove the "active" class
+  });

@@ -125,6 +125,10 @@ button:hover {
   background: #1e90ff;
 }
 
+.active {
+    background-color: #1e90ff;
+  }
+
 #clear {
   background: #ff4d4f;
 }
