@@ -93,11 +93,11 @@ async function renderOpenTabs() {
     {
       const audioStatus = document.createElement("span");
       audioStatus.textContent = "🔊";
-      status.style.marginLeft = "6px";
       status.appendChild(audioStatus);
     }
     const lockIcon = document.createElement("span");
-    status.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
+    lockIcon.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
+    lockIcon.style.marginLeft = "6px";
     status.appendChild(lockIcon);
 
     li.appendChild(checkbox);
