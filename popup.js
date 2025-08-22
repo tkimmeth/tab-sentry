@@ -97,7 +97,7 @@ async function renderOpenTabs() {
       status.appendChild(audioStatus);
     }
     const lockIcon = document.createElement("span");
-    status.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
+    lockIcon.textContent = lockedSet.has(tab.id) ? " 🔒" : " 🔓";
     status.appendChild(lockIcon);
 
     li.appendChild(checkbox);
