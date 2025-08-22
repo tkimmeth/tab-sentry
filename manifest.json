@@ -1,10 +1,8 @@
-//manifest.json
-
 {
   "manifest_version": 3,
-  "name": "Tab Sentry",
+  "name": "tabsentry",
   "version": "0.1.0",
-  "description": "A browser extension that tackles 'Browser Fatigue' by auto-grouping idle tabs, giving countdown warnings, and gently closing them while saving URLs for later.",
+  "description": "Keeps your browser from drowning in tabs. Warns, auto-closes idle ones, and saves them so you can get back later.",
   "permissions": [
     "tabs",
     "tabGroups",
@@ -20,15 +18,15 @@
   "options_page": "settings.html",
   "action": {
     "default_icon": {
-      "16": "images/sentry.png",
-      "48": "images/sentry.png",
-      "128": "images/sentry.png"
+      "16": "images/tabsentry.png",
+      "48": "images/tabsentry.png",
+      "128": "images/tabsentry.png"
     },
     "default_popup": "popup.html"
   },
   "icons": {
-    "16": "images/sentry.png",
-    "48": "images/sentry.png",
-    "128": "images/sentry.png"
+    "16": "images/tabsentry.png",
+    "48": "images/tabsentry.png",
+    "128": "images/tabsentry.png"
   }
 }

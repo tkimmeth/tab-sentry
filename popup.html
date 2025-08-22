@@ -2,27 +2,19 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>TabSentry</title>
+  <title>tabsentry</title>
   <link rel="stylesheet" href="popup.css">
 </head>
-  
 <body>
   <div class="container">
-    <!-- Header -->
+
     <div class="header-bar">
-      <!-- Toggle left -->
       <button id="auto-toggle" class="toggle-off">OFF</button>
-
-      <!-- Center title -->
-      <h1 class="title">Tab Sentry</h1>
-
-      <!-- Settings gear right -->
+      <h1 class="title">tabsentry</h1>
       <button id="settings-btn" title="Settings" class="settings-btn">⚙️</button>
     </div>
 
-    <!-- Main View -->
     <div id="main-view">
-      <!-- Open Tabs -->
       <div class="OpenTabs">
         <h2>Open Tabs (<span id="ActiveTabCounter">0</span>)</h2>
         <ul id="open-tabs"></ul>
@@ -31,7 +23,6 @@
 
       <hr>
 
-      <!-- Recently Closed -->
       <div class="RecentlyClosed">
         <div class="section-header">
           <h2>Recently Closed (<span id="ResourcesSaved">0</span>)</h2>
@@ -43,7 +34,6 @@
       </div>
     </div>
 
-    <!-- Settings View (hidden, toggled by JS) -->
     <div id="settings-view">
       <h2>⚙️ Settings</h2>
       <label>

@@ -1,15 +1,17 @@
+/* popup.css */
+
 body {
   font-family: Arial, sans-serif;
   font-size: 16px;
   margin: 0;
   padding: 14px;
   color: #f1f1f1;
-  background: #1e2a38; /* dark navy background */
+  background: #1e2a38; /* dark navy */
   min-width: 420px;
 }
 
 .container {
-  background: #2c3e50; /* slightly lighter card */
+  background: #2c3e50; /* card */
   border-radius: 10px;
   padding: 16px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.4);
@@ -27,7 +29,7 @@ body {
   font-size: 22px;
   margin: 0;
   flex-grow: 1;
-  color: white;
+  color: #fff;
 }
 
 .settings-btn {
@@ -35,10 +37,10 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  color: white;
+  color: #fff;
 }
 
-/* Toggle Button */
+/* toggle button */
 #auto-toggle {
   border: none;
   border-radius: 12px;
@@ -50,7 +52,7 @@ body {
 
 #auto-toggle.toggle-on {
   background: #4da6ff;
-  color: white;
+  color: #fff;
 }
 
 #auto-toggle.toggle-off {
@@ -110,7 +112,7 @@ ul li a:hover {
 button {
   margin-left: 8px;
   background: #4da6ff;
-  color: white;
+  color: #fff;
   border: none;
   border-radius: 6px;
   padding: 4px 10px;
@@ -166,6 +168,6 @@ button:hover {
 }
 
 #settings-view.open {
-  max-height: 300px; /* adjust depending on content */
+  max-height: 300px;
   opacity: 1;
 }

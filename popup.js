@@ -1,23 +1,25 @@
+// popup.js — tabsentry UI
+
 const $ = id => document.getElementById(id);
 
-// -------------------------
-// AUTO-CLEANER TOGGLE BUTTON
-// -------------------------
+// --- ON/OFF toggle that controls settings.enabled ---
 async function initToggle() {
-  const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
   const btn = $("auto-toggle");
-
-  updateToggleUI(btn, autoCleanerEnabled);
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  const enabled = settings.enabled ?? true;
+  renderToggle(btn, enabled);
 
   btn.addEventListener("click", async () => {
-    const { autoCleanerEnabled = false } = await chrome.storage.local.get("autoCleanerEnabled");
-    const newState = !autoCleanerEnabled;
-    await chrome.storage.local.set({ autoCleanerEnabled: newState });
-    updateToggleUI(btn, newState);
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    const next = !(settings.enabled ?? true);
+    await chrome.storage.local.set({ settings: { ...settings, enabled: next } });
+    renderToggle(btn, next);
+    // ping bg to reload quickly (optional, bg also listens to storage changes)
+    chrome.runtime.sendMessage({ type: "refreshSettings" });
   });
 }
 
-function updateToggleUI(btn, enabled) {
+function renderToggle(btn, enabled) {
   if (enabled) {
     btn.classList.add("toggle-on");
     btn.classList.remove("toggle-off");
@@ -174,22 +176,15 @@ async function renderClosedTabs() {
 }
 
 // -------------------------
-// SEARCH FILTER
+// WIRE UP
 // -------------------------
 $("search-closed").addEventListener("input", renderClosedTabs);
-
-// -------------------------
-// CLEAR HISTORY
-// -------------------------
 $("clear").addEventListener("click", async () => {
   await chrome.storage.local.set({ closedTabs: [] });
   renderClosedTabs();
   renderOpenTabs();
 });
 
-// -------------------------
-// INIT
-// -------------------------
 renderOpenTabs();
 renderClosedTabs();
 initToggle();
@@ -201,12 +196,9 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-// -------------------------
-// INLINE SETTINGS VIEW
-// -------------------------
+// settings drawer
 const settingsBtn = document.getElementById("settings-btn");
 const settingsView = document.getElementById("settings-view");
-
 if (settingsBtn && settingsView) {
   settingsBtn.addEventListener("click", () => {
     settingsView.classList.toggle("open");
@@ -215,23 +207,18 @@ if (settingsBtn && settingsView) {
     }
   });
 }
-
 async function loadSettings() {
   const { settings = {} } = await chrome.storage.local.get("settings");
   $("threshold").value = settings.threshold ?? 5;
   $("idle-timeout").value = settings.idleTimeout ?? 10;
 }
-
 const saveBtn = document.getElementById("save-settings");
 if (saveBtn) {
   saveBtn.addEventListener("click", async () => {
     const threshold = parseInt($("threshold").value, 10);
     const idleTimeout = parseInt($("idle-timeout").value, 10);
-
-    await chrome.storage.local.set({
-      settings: { threshold, idleTimeout }
-    });
-
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    await chrome.storage.local.set({ settings: { ...settings, threshold, idleTimeout } });
     const status = $("status");
     status.textContent = "Saved!";
     setTimeout(() => (status.textContent = ""), 2000);

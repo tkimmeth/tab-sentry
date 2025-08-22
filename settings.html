@@ -1,23 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-  <title>Tab Sentry Settings</title>
+  <meta charset="utf-8" />
+  <title>tabsentry • settings</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
-  <h2>Settings</h2>
-  <label>
-    Max Tabs Before Auto-Close:
-    <input type="number" id="threshold" min="1" />
-  </label>
-  <br/>
-  <label>
-    Idle Timeout (minutes):
-    <input type="number" id="idle-timeout" min="1" />
-  </label>
-  <br/>
-  <button id="save-settings">Save</button>
-  <span id="status"></span>
+  <div class="container" style="max-width:520px;margin:auto;">
+    <div class="header-bar">
+      <h1 class="title" style="margin-left:auto;margin-right:auto;">tabsentry</h1>
+    </div>
+
+    <h2>⚙️ Settings</h2>
+
+    <label>
+      Max Tabs Before Auto‑Close:
+      <input type="number" id="threshold" min="1" />
+    </label>
+    <br />
+
+    <label>
+      Idle Timeout (minutes):
+      <input type="number" id="idle-timeout" min="1" />
+    </label>
+    <br /><br />
+
+    <button id="save-settings">Save</button>
+    <span id="status" class="meta" style="margin-left:10px;"></span>
+  </div>
 
   <script src="settings.js"></script>
 </body>
